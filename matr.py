@@ -1,6 +1,7 @@
 from itertools import permutations
 from copy import deepcopy
 from random import random
+from math import sqrt
 CONST_TEST_MAT = [[7.14, 1.02, 1.05, 1.12, -0.96], \
            [1.18, 3.28, 1.3, -1.63, -0.93], \
            [0.89, -2.46, 6.32, 2.1, -0.467],\
@@ -113,7 +114,7 @@ def check_dim(row, col):
 """Class"""
 class matr:
     """Init, operators, iterators"""
-    def __init__(self, *args, rows_or_cols = 1):# < 0 for rows, > 0 for cols
+    def __init__(self, *args, rows_or_cols = 1):# <= 0 for rows, > 0 for cols
         #trying to guess what arguments were passed
         if isinstance(args[0], list) and is_int_float(args[0][0]):#if there are lists in args
             for i in args:
@@ -171,7 +172,9 @@ class matr:
     def __mul__(self, other):
         m = []
 
-        if is_scalar(other):
+        if is_int_float(other):
+            print(type(other))
+            print(type(self[0][0]))
             if type(other) != type(self[0][0]):
                 raise TypeError("Matrix and scalar must be the same type, \
                 not %s and %s" % type(self[0][0]), type(other))
@@ -226,7 +229,7 @@ class matr:
         return(self + -other)
     
     def __neg__(self):
-        return(-1 * self)    
+        return(-1.0 * self)    
     
     def __getitem__(self, index):
 
@@ -241,7 +244,7 @@ class matr:
     def __str__(self):
         s = ''
         for i in self.matrix:
-            s += str([round(i[j], 2) for j in range(len(i))]) + '\n'
+            s += str(i) + '\n'#[round(i[j], 2) for j in range(len(i))]) + '\n'
 
         return(s)
 
@@ -427,9 +430,26 @@ class matr:
 
         return(solution)
     """Iterative methods"""
-    def Iter_Solve(self, right, accuracy = 0.01): #AX=B
-        
+    def Gauss_Seidel(self, right, eps = 10e-5): #self * X = right
+        if right.rows() != self.rows():
+            raise Right_Vector_Error
 
+        n = right.rows()
+        x = matr([[0.0] for i in range(n)])
+
+        conv = False
+        while not conv:
+            nx = deepcopy(x)
+            for i in range(n):
+                s1 = sum([self[i][j] * nx[j][0] for j in range(i)])
+                s2 = sum([self[i][j] * x[j][0] for j in range(i + 1, n)])
+                nx[i][0] = (right[i][0] - s1 - s2) / A[i][i]
+
+            conv = sqrt(sum([(nx[i][0] - x[i][0]) ** 2 for i in range(n)])) <= eps
+            x = nx
+
+        return(x)
+            
 """Support functions""" 
 def is_scalar(val):
     if isinstance(val, list):
@@ -488,6 +508,13 @@ class SOLE(matr):
             print("Can't find LU decomposition")
         self.det = self.det()
 
-    
+A = matr([[4,3.2,0.5], [2.2,3,-0.3], [-3.1,-0.2,4]]).to_float()
+B = matr([[1], [0], [0]]).to_float()
+print(A)
+print(B)
+x1 = A.LU_solve(B)
+x2 = A.Gauss_Seidel(B, eps = 10e-15)
+print(x1, x2, type(x1), type(x2), sep = '\n')
+print(x1 - x2)
 
     
