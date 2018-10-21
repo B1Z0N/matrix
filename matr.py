@@ -31,22 +31,27 @@ class Square_Error(Matrix_Error):
 class Det_Error(Square_Error):
     """Thrown when we are not able to take det"""
     def __init__(self, m):
-        Square_Error.__init__(m, "determinant")
+        Square_Error.__init__(self, m, "determinant")
+
+class Inv_Error(Square_Error):
+    """Thrown when we are not able to take inverse matrix"""
+    def __init__(self, m):
+        Square_Error.__init__(self, m, "inverse matrix")
 
 class Trace_Error(Square_Error):
     """Thrown when we are not able to take trace"""
     def __init__(self, m):
-        Square_Error.__init__(m, "trace")
+        Square_Error.__init__(self, m, "trace")
         
 class LU_Error(Square_Error):
     """Thrown when we are not able to take LU"""
     def __init__(self, m):
-        Square_Error.__init__(m, "LU")
+        Square_Error.__init__(self, m, "LU")
 
 class Pivotize_Error(Square_Error):
     """Thrown when we are not able to pivotize"""
     def __init__(self, m):
-        Square_Error.__init__(m, "pivotizing")
+        Square_Error.__init__(self, m, "pivotizing")
 
 class Arithmetic_Matrix_Error(Matrix_Error):
     """General class for mul and add dimension error"""
@@ -142,6 +147,8 @@ class matr:
                 self.matrix = gen_zero_mat(rows, cols)
             else:
                 raise ValueError("Matrix takes 1, 2 args or many lists to join into Matrix, not %d args" % len(args))
+
+            #self.P, self.L, self.U = self.PLU()
         
         self.index = 0 ##index for iterators in matrix
     
@@ -234,7 +241,7 @@ class matr:
     def __str__(self):
         s = ''
         for i in self.matrix:
-            s += str(i) + '\n'
+            s += str([round(i[j], 2) for j in range(len(i))]) + '\n'
 
         return(s)
 
@@ -242,15 +249,18 @@ class matr:
         return( matr([[float(self[i][j]) \
                 for j in range(self.cols())] \
                 for i in range(self.rows())]))
+    
     def to_int(self):
         return( matr([[float(int(self[i][j])) \
                 for j in range(self.cols())] \
                 for i in range(self.rows())]))
 
-    """def __invert__(self):
-
-        for i in self.matrix:
-            for j in self.matrix:"""
+    def __invert__(self):
+        if self.rows() != self.cols():
+            raise Inv_Error(self.matrix)
+        if self.det() == 0:
+            raise Det_Error(self.matrix)
+        return(self.LU_solve(matr(gen_id_mat(self.rows()))))
 
     def __pow__(self, num):
         if isinstance(num, int) == False:
@@ -290,20 +300,20 @@ class matr:
         return(self.matrix)
 
     def get_col(self, num):
-        col = [self[num][i] for i in range(self.rows())]
+        col = [[self[i][num]] for i in range(self.rows())]
 
         return col
 
     def get_row(self, num):
     
-        return (self[num])
+        return ([self[num]])
     def get_cols(self):
         for i in range(self.cols()):
-            yield get_col(i)
+            yield self.get_col(i)
             
-    def get_rows():
+    def get_rows(self):
         for i in range(self.rows()):
-            yield get_row(i)
+            yield self.get_row(i)
     """Operations"""
     def rank():
         pass
@@ -319,13 +329,19 @@ class matr:
     def det(self):
         if self.rows() != self.cols():
             raise Det_Error(self)
+
+        P , swaps  = self.pivotize()
+        
+        try:
+            _ , U = (P * self).LU()
+        except ZeroDivisionError:
+            return(0)
         
         det = 1
-        LU = self.LU()
         for i in range(self.rows()):
-            det *= (LU[1])[i][i]
-
-        return(det)
+            det *= U[i][i]
+        
+        return(det*((-1)**(swaps)))
 
     def transpose(self):
         is_rectangular(self)
@@ -338,25 +354,26 @@ class matr:
 
     """Solving"""
     """LU solution"""
-    def pivotize(self):
+    def pivotize(self):#create P matrix of PLU decomposition
         if self.cols() != self.rows():
             raise Pivotize_Error(self)
         
         n = self.cols()
         P = matr(gen_id_mat(n))
-
+        swaps = 0
         for j in range(n):
             row = max(range(j, n), key = lambda i: abs(self[i][j]))
             if j != row:
                 P[j], P[row] = P[row], P[j]
+                swaps += 1
 
-        return (P)
+        return (P, swaps)
         
     def PLU(self):
-        P = self.pivotize()
+        P, _  = self.pivotize()
         A = P * self
         L, U = A.LU()
-
+        
         return(P, L, U)
         
     def LU(self):
@@ -380,29 +397,38 @@ class matr:
 
         return (L, U)
     
-    def LU_solve(self, right): #A * x = b
+    def LU_solve(self, right): #A * X = B
         if right.rows() != self.rows():
             raise Right_Vector_Error
         
         y = right.rows()
         x = right.cols()#dims
         P, L, U = self.PLU()
-        x1 = P * right  #(P^-1)LUx = b, (P^-1)x1 = b, x1 = P * b
-
-        #LUx = x1, Lx2 = x1
-        x2 = matr(y, x)
-        for i in range(y):
-            s = sum([L[i][k] * x2[k][0] for k in range(i)])
-            x2[i][0] = x1[i][0] - s
-
-        #Ux = x2
+        
         solution = matr(y, x)
-        for i in range(y - 1, -1, -1):
-            s = sum([U[i][k] * solution[k][0] for k in range(y - 1, i, -1)])
-            solution[i][0] = (x2[i][0] - s) / U[i][i]
+        res_col = 0
+        
+        for col in right.get_cols():
+        #(P^-1)LUx = b, (P^-1)x1 = b, x1 = P * b
+            x1 = P * matr(col)
+
+            #LUx = x1, Lx2 = x1
+            x2 = matr(y, 1)
+            for i in range(y):
+                s = sum([L[i][k] * x2[k][0] for k in range(i)])
+                x2[i][0] = x1[i][0] - s
+
+            #Ux = x2
+            for i in range(y - 1, -1, -1):
+                s = sum([U[i][k] * solution[k][res_col] for k in range(y - 1, i, -1)])
+                solution[i][res_col] = (x2[i][0] - s) / U[i][i]
+                
+            res_col += 1
 
         return(solution)
-    ##others
+    """Iterative methods"""
+    def Iter_Solve(self, right, accuracy = 0.01): #AX=B
+        
 
 """Support functions""" 
 def is_scalar(val):
@@ -462,9 +488,6 @@ class SOLE(matr):
             print("Can't find LU decomposition")
         self.det = self.det()
 
-m1 = matr(gen_rand_mat(y=3,start = 0, end = 5, isint=1))
-m2 = matr(gen_rand_mat(y=3,start = 0, end = 5, isint=1))
-m1 = matr([1, 2, 3], [4, 5, 6], [7, 8, 9], rows_or_cols = -1)
-m2 = matr([1, 2, 3], [4, 5, 6], [7, 8, 9])
-print(m1)
-print(m2)
+    
+
+    
