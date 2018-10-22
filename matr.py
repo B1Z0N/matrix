@@ -9,14 +9,16 @@ CONST_TEST_MAT = [[7.14, 1.02, 1.05, 1.12, -0.96], \
            [1.44, 0.27, 0.733, -4, 12]]
 CONST_TEST_VEC = [[2.1], [0.96], [-1.72], [3.68], [-1.92]]
 """Exceptions"""
+#Blocks of exception classes
 class Matrix_Error(Exception):
     """Base class for exceptions in this module"""
-
+#1
 class Rectangular_Error(Matrix_Error):
     """Thrown when the matrix is not rectangular"""
     def __init__(self, mat):
-        print("Not rectangular matrix %s" % mat)
-        
+        print("Not rectangular matrix {0}".format(mat))
+#1
+#2
 class Square_Error(Matrix_Error):
     """Thrown when the matrix is not square, but function is 
             defined on square matrices only"""
@@ -26,8 +28,8 @@ class Square_Error(Matrix_Error):
 
     def __str__(self):
 
-        return("Not able to take %s of non-square matrix %s" % \
-        self.reason, self.m)
+        return("Not able to take {0} of non-square matrix {1}".format( \
+            self.reason, self.m))
 
 class Det_Error(Square_Error):
     """Thrown when we are not able to take det"""
@@ -44,7 +46,7 @@ class Trace_Error(Square_Error):
     def __init__(self, m):
         Square_Error.__init__(self, m, "trace")
         
-class LU_Error(Square_Error):
+class LU_Square_Error(Square_Error):
     """Thrown when we are not able to take LU"""
     def __init__(self, m):
         Square_Error.__init__(self, m, "LU")
@@ -54,6 +56,28 @@ class Pivotize_Error(Square_Error):
     def __init__(self, m):
         Square_Error.__init__(self, m, "pivotizing")
 
+#2
+#3
+class LU_Error(Matrix_Error):
+    """General class for all exceptions related to LU decomposition"""
+    def __init__(self, m, reason, operation):
+        self.m = m
+        self.reason = reason
+        self.operation = operation
+        
+    def __str__(self):
+
+        return("Not able to perform " + \
+                   "{0} with {1} because {2}".format( \
+                       self.operation, self.m, self.reason))
+        
+
+class LU_Zero_Division_Error(LU_Error):
+    def __init__(self, m):
+        LU_Error.__init__(self, m, "can't div on zero", \
+                          "LU decompose")
+#3
+#4
 class Arithmetic_Matrix_Error(Matrix_Error):
     """General class for mul and add dimension error"""
     def __init__(self, m1, m2, operation):
@@ -62,9 +86,9 @@ class Arithmetic_Matrix_Error(Matrix_Error):
         self.operation = operation
     
     def __str__(self):
-        return ("It is impossible to %s %dx%d and %dx%d matrices" % \
-        self.operation, self.m1.rows(), self.m1.cols(), \
-        self.m2.rows(), self.m2.cols())
+        return ("It is impossible to {0} {1}x{2} and {3}x{4} matrices".format( \
+            self.operation, self.m1.rows(), self.m1.cols(), \
+                self.m2.rows(), self.m2.cols()))
 
 class Addition_Matrix_Error(Arithmetic_Matrix_Error):
     def __init__(self, m1, m2):
@@ -73,7 +97,8 @@ class Addition_Matrix_Error(Arithmetic_Matrix_Error):
 class Multiplication_Matrix_Error(Arithmetic_Matrix_Error):
     def __init__(self, m1, m2):
         Arithmetic_Matrix_Error.__init__(self, m1, m2, "muliply")
-
+#4
+#5
 class SOLE_Error(Matrix_Error): #A * x = b
     """General class for SOLE errors"""
     def __init__(self, A, x, b, err):
@@ -83,15 +108,33 @@ class SOLE_Error(Matrix_Error): #A * x = b
         self.operation = err
     
     def __str__(self):
-        return ("The error is '%s':\n %s X %s = %s" % \
-        self.err, self.A, self.x, \
-        self.b)
+        return ("The error is '{0}':\n {1} X {2} = {3}".format( \
+            self.err, self.A, self.x, self.b))
 
 class Right_Vector_Error(SOLE_Error):#A * x = b
     """If dims of right vector incompatible with dims of matrix"""
     def __init__(self, A, x, b):
         SOLE_Error.__init__(self, A, x, b, "wrong right vector dims")
+#5
+#6
+class Gauss_Seidel_Error(Matrix_Error):
+    """General class for all exceptions related to LU decomposition"""
+    def __init__(self, m, reason, operation):
+        self.m = m
+        self.reason = reason
+        self.operation = operation
         
+    def __str__(self):
+
+        return("Not able to perform {0} with {1} because {2}".format( \
+            self.operation, self.m, self.reason))
+               
+class Not_Convergable_Error(Gauss_Seidel_Error):
+    def __init__(self, m, norm):
+        Gauss_Seidel_Error.__init__(self, m, \
+        "norms is " + str(norm) + " ( >= 1 )", \
+        "Gauss-Seidel itertive method")
+#6
 """Tests"""
 def is_rectangular(mat):
     width = mat.cols()
@@ -168,7 +211,10 @@ class matr:
         self.index += 1
         
         return (self[y][x])
-    
+
+    def __truediv__(self, other):
+        return(self * ~other)
+        
     def __mul__(self, other):
         m = []
 
@@ -242,7 +288,7 @@ class matr:
         self.matrix[row] = val
         
     def __str__(self):
-        s = ''
+        s = '\n'
         for i in self.matrix:
             s += str(i) + '\n'#[round(i[j], 2) for j in range(len(i))]) + '\n'
 
@@ -281,6 +327,24 @@ class matr:
         return(temp)
 
     """Get elements"""
+    def mat_to_file(self, fpath):
+        y = self.rows()
+        x = self.cols()
+        try:
+            with open(fpath, "w") as f:
+                for i in range(y):
+                    for j in range(x):
+                        if j < x - 1:
+                            print(self[i][j], end = ' ', file = f)
+                        elif i < y - 1:
+                            print(self[i][j], end ='\n', file = f)
+                        else:
+                            print(self[i][j], end = '', file = f)
+        except IOError as er:
+            print(er)
+
+        return
+                    
     def cols(self):
         return(len(self.matrix[0]))
 
@@ -318,6 +382,7 @@ class matr:
         for i in range(self.rows()):
             yield self.get_row(i)
     """Operations"""
+    
     def rank():
         pass
         
@@ -337,7 +402,7 @@ class matr:
         
         try:
             _ , U = (P * self).LU()
-        except ZeroDivisionError:
+        except LU_Zero_Division_Error:
             return(0)
         
         det = 1
@@ -372,7 +437,7 @@ class matr:
 
         return (P, swaps)
         
-    def PLU(self):
+    def PLU(self):#PA = LU
         P, _  = self.pivotize()
         A = P * self
         L, U = A.LU()
@@ -381,7 +446,7 @@ class matr:
         
     def LU(self):
         if self.rows() != self.cols():
-            raise LU_Error(self)
+            raise LU_Square_Error(self)
         
         n = self.rows()
         L = matr(n)
@@ -391,10 +456,13 @@ class matr:
             for k in range(i, n):
                 s = sum([L[i][j] * U[j][k] for j in range(i)])
                 U[i][k] = self[i][k] - s
+            
             for k in range(i, n):
                 if i == k:
                     L[i][i] = 1.0
                 else:
+                    if U[i][i] == 0.0:
+                        raise LU_Zero_Division_Error(self)
                     s = sum([L[k][j] * U[j][i] for j in range(i)])
                     L[k][i] = (self[k][i] - s) / U[i][i]
 
@@ -430,6 +498,10 @@ class matr:
 
         return(solution)
     """Iterative methods"""
+    def residual(self, X, B):
+        
+        return(self * X - B)
+    
     def Gauss_Seidel(self, right, eps = 10e-5): #self * X = right
         if right.rows() != self.rows():
             raise Right_Vector_Error
@@ -437,18 +509,61 @@ class matr:
         n = right.rows()
         x = matr([[0.0] for i in range(n)])
 
+        norms = {}
+        norm = self.spectral_norm()
+        if  norm >= 1.0:
+            norms['spec'] = norm
+            norm = self.vec_norm1()
+            if norm >= 1.0:
+                norms['vec1'] = norm        #collecting norms info
+                norm = self.vec_norm2()
+                if norm >= 1.0:
+                    norms['vec2'] = norm
+                    
         conv = False
-        while not conv:
-            nx = deepcopy(x)
-            for i in range(n):
-                s1 = sum([self[i][j] * nx[j][0] for j in range(i)])
-                s2 = sum([self[i][j] * x[j][0] for j in range(i + 1, n)])
-                nx[i][0] = (right[i][0] - s1 - s2) / A[i][i]
+        try:
+            while not conv:
+                nx = deepcopy(x)
+                for i in range(n):
+                    s1 = sum([self[i][j] * nx[j][0] for j in range(i)])
+                    s2 = sum([self[i][j] * x[j][0] for j in range(i + 1, n)])
+                    nx[i][0] = (right[i][0] - s1 - s2) / A[i][i]
 
-            conv = sqrt(sum([(nx[i][0] - x[i][0]) ** 2 for i in range(n)])) <= eps
-            x = nx
+                conv = self.residual(nx, right).spectral_norm() <= eps
+                x = nx
+        except OverflowError:
+            raise Not_Convergable_Error(self, norms)
 
         return(x)
+    
+    def spectral_norm(self):
+        y = self.rows()
+        x = self.cols()
+
+        return(sqrt(sum(self[i][j] ** 2 for i in range(y) \
+                    for j in range(x))))
+    
+    def vec_norm1(self):
+        y = self.rows()
+        x = self.cols()
+        
+        return( \
+            max( \
+                sum( \
+                    abs(self[i][j]) for j in range(x) \
+                    ) \
+                for i in range(y)))
+    
+    def vec_norm2(self):
+        y = self.rows()
+        x = self.cols()
+        
+        return( \
+            max( \
+                sum( \
+                    abs(self[i][j]) for i in range(y) \
+                    ) \
+                for j in range(x)))
             
 """Support functions""" 
 def is_scalar(val):
@@ -499,6 +614,17 @@ def gen_rand_mat(y, x = -1, start = -100, end = 100, isint = 0):
         
     return(matrix)
 
+def file_to_mat(fpath):
+    try:
+        with open(fpath) as f:
+            l = [[float(num) for num in line.split(' ')] \
+                 for line in f]
+    except IOError as er:
+        print(er)
+        return
+        
+    return(matr(l))
+
 class SOLE(matr):
     def __init__(self, matrix):
         matr.__init__(self, matrix)
@@ -508,13 +634,6 @@ class SOLE(matr):
             print("Can't find LU decomposition")
         self.det = self.det()
 
-A = matr([[4,3.2,0.5], [2.2,3,-0.3], [-3.1,-0.2,4]]).to_float()
-B = matr([[1], [0], [0]]).to_float()
-print(A)
-print(B)
-x1 = A.LU_solve(B)
-x2 = A.Gauss_Seidel(B, eps = 10e-15)
-print(x1, x2, type(x1), type(x2), sep = '\n')
-print(x1 - x2)
-
-    
+A = matr(CONST_TEST_MAT)
+A.mat_to_file('matr2.txt')
+file_to_mat('mat2r.txt')
