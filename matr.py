@@ -56,6 +56,7 @@ class SOLEError(MatrixError): #A * x = b
             self.err, self.A, self.x, self.b))
 #6    
 class NotConvergableError(MatrixError):
+    """If some of the methods not converging to limited value"""
     def __init__(self, m, helpinf, operation):
         self.m = m
         self.help = helpinf
@@ -68,12 +69,16 @@ class NotConvergableError(MatrixError):
 
 """Generation functions"""
 def seq_to_type(seq, totype = float):
+    """Convert all sequence numbers to type"""
+    
     if not issubclass(totype, numbers.Number):
         raise TypeError
 
     return [[totype(j) for j in i] for i in seq]
 
 def gen_id_mat(y, x = None, scalartype = float):
+    """Generate identity matrix of given dimensions"""
+    
     if not x:
         x = y
     if not issubclass(scalartype, numbers.Number):
@@ -86,6 +91,8 @@ def gen_id_mat(y, x = None, scalartype = float):
     return(mat)
 
 def gen_zero_mat(y, x = None, scalartype = float):
+    """Generate zero matrix of given dimensions"""
+
     if not x:
         x = y
     if not issubclass(scalartype, numbers.Number):
@@ -98,6 +105,8 @@ def gen_zero_mat(y, x = None, scalartype = float):
     return(mat)
 
 def gen_rand_mat(y, x = None, start = -100, end = 100, scalartype = float):
+    """Generate random matrix of given dimensions"""
+        
     if not x:
         x = y
     if not issubclass(scalartype, numbers.Number):
@@ -114,6 +123,8 @@ def gen_rand_mat(y, x = None, start = -100, end = 100, scalartype = float):
     return(matrix)
 """Checks"""
 def is_rectangular(lst):
+    """Checks for rectangularity of container of containers"""
+    
     len(lst) #checking if it has a len method
     width = len(lst[0])
     for i in lst:
@@ -121,6 +132,8 @@ def is_rectangular(lst):
             raise RectangularError(lst)
 
 def check_dim(row, col):
+    """Check for right set of dimensions"""
+    
     if type(row) != int:
         raise TypeError("Rows can't be of type %s" % type(row))
     if type(col) != int:
@@ -134,8 +147,12 @@ def check_dim(row, col):
 """Classes"""
 ####################################################################
 class MatrixMathMixin:
-    """LU solution"""
+    """Main math implemented here"""
+
+    """All about LU"""
     def pivotize(self):#create P matrix of PLU decomposition
+        """Pivotize matrix"""
+        
         if self.cols() != self.rows():
             raise SquareError(self, "pivotize")
         
@@ -151,6 +168,8 @@ class MatrixMathMixin:
         return (P, swaps)
         
     def PLU(self):#PA = LU
+        """PLU decomposition"""
+        
         P, _  = self.pivotize()
         A = P @ self
         L, U = A.LU()
@@ -158,6 +177,8 @@ class MatrixMathMixin:
         return(P, L, U)
         
     def LU(self):
+        """LU decomposition"""
+        
         if self.rows() != self.cols():
             raise SquareError(self, "LU")
         
@@ -182,6 +203,8 @@ class MatrixMathMixin:
         return (L, U)
     
     def LU_solve(self, right): #A * X = B
+        """LU solution"""
+        
         if right.rows() != self.rows():
             raise SOLEError(self, right, "wrong dimensions of the righthand vector")
         
@@ -210,12 +233,15 @@ class MatrixMathMixin:
             res_col += 1
 
         return(solution)
+    
     """Iterative methods"""
     def residual(self, X, B):
         
         return(self @ X - B)
     
     def Gauss_Seidel(self, right, eps = 10e-5): #self * X = right
+        """Gauss-Seidel method"""
+        
         if right.rows() != self.rows():
             raise SOLEError(self, right, "wrong dimensions of the righthand vector")
 
@@ -280,6 +306,7 @@ class MatrixMathMixin:
                     abs(self[i][j]) for i in range(y) \
                     ) \
                 for j in range(x)))
+    
     """Eigenvalues"""
     def power_iteration(self, accuracy = 0.001):
         def eigen_value(matr, acc):
@@ -354,7 +381,7 @@ class MatrixMathMixin:
         evec = A.LU_solve(matr([0.0] * dim))
             
         return evec
-
+    
 
 class CustomConstructorsMixin:
     @classmethod
@@ -404,12 +431,18 @@ class GetElementsMixin:
         return
                     
     def cols(self):
+        """Get cols amount"""
+        
         return(len(self.matrix[0]))
 
     def rows(self):
+        """Get rows amount"""
+        
         return(len(self.matrix))
 
-    def minor(self, num_lst):  
+    def minor(self, num_lst):
+        """Get a minor on intersection of num_lst points"""
+        
     #num_lst is list of points(rows and columns) which we need to slice
         row = (num_lst[j][0] for j in range(len(num_lst)))#to get our minor
         col = (num_lst[j][1] for j in range(len(num_lst)))
@@ -425,24 +458,33 @@ class GetElementsMixin:
         return(self.matrix)
 
     def get_col(self, num):
+        """Get column as a list"""
+        
         col = [[self[i][num]] for i in range(self.rows())]
 
         return col
 
     def get_row(self, num):
+        """Get row as a list"""
     
         return ([self[num]])
+    
     def get_cols(self):
+        """One by one"""
+        
         for i in range(self.cols()):
             yield self.get_col(i)
             
     def get_rows(self):
+        """One by one"""
+        
         for i in range(self.rows()):
             yield self.get_row(i)
 
 class MatrixOperationsMixin:
        
     def rank():
+        
         pass
         
     def trace (self):
@@ -618,8 +660,11 @@ class MatrixOperationsMixin:
     
             
 class matr(MatrixMathMixin, CustomConstructorsMixin, GetElementsMixin, MatrixOperationsMixin):
-    """Different constructors"""
+    """Assembly of all helper matrix mixins"""
+    
     def __init__(self, x, y = None, scalartype = float):
+        """Added init depending on types and parameters"""
+        
         @singledispatch
         def matr_init(arg):
             return NotImplemented
