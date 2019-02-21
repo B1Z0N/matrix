@@ -112,7 +112,7 @@ def gen_rand_mat(y, x = None, start = -100, end = 100, scalartype = float):
         matrix = [[scalartype(randrange()) for j in range(x)] for i in range(y)]
                       
     return(matrix)
-"""Tests"""
+"""Checks"""
 def is_rectangular(lst):
     len(lst) #checking if it has a len method
     width = len(lst[0])
@@ -354,7 +354,8 @@ class MatrixMathMixin:
         evec = A.LU_solve(matr([0.0] * dim))
             
         return evec
-##################################################################################
+
+
 class CustomConstructorsMixin:
     @classmethod
     def from_string(cls, string, delimiter = ';'):
@@ -381,38 +382,9 @@ class CustomConstructorsMixin:
         s = self.to_string(delimiter = '\n')
         with open(fpath, 'w') as f:
             f.write(s)
-###############################################################################################
-class matr(MatrixMathMixin, CustomConstructorsMixin):
-    """Different constructors"""
-    def __init__(self, x, y = None, scalartype = float):
-        @singledispatch
-        def matr_init(arg):
-            return NotImplemented
-        @matr_init.register(numbers.Number)
-        def _(arg):
-            try:
-                return gen_id_mat(arg, scalartype = scalartype)
-            except TypeError:
-                raise TypeError("argument must be of positive integer type")
-        @matr_init.register(Sequence)
-        def _(arg):
-            try:
-                is_rectangular(arg)
-            except TypeError:
-                raise TypeError("argument must be two-dimensional iterable")
-            return [list(i) for i in arg]
 
-        if y == None:
-                self.matrix = matr_init(x)
-                if self.matrix == NotImplemented:
-                    raise TypeError("wrong arguments of type {!r} and {!r}".format(type(x), type(y)))
-        else:
-            try:
-                self.matrix = gen_id_mat(x, y, scalartype = scalartype)
-            except TypeError:
-                raise TypeError("arguments must be of positive integer type")
-       
-    """Get elements"""
+
+class GetElementsMixin:
     def mat_to_file(self, fpath):
         y = self.rows()
         x = self.cols()
@@ -467,8 +439,9 @@ class matr(MatrixMathMixin, CustomConstructorsMixin):
     def get_rows(self):
         for i in range(self.rows()):
             yield self.get_row(i)
-    """Operations"""
-    
+
+class MatrixOperationsMixin:
+       
     def rank():
         pass
         
@@ -642,3 +615,34 @@ class matr(MatrixMathMixin, CustomConstructorsMixin):
             temp = (~self) ** (-num) ##temp = (A^-1) ^ (-num) when num < 0
         
         return(temp)
+    
+            
+class matr(MatrixMathMixin, CustomConstructorsMixin, GetElementsMixin, MatrixOperationsMixin):
+    """Different constructors"""
+    def __init__(self, x, y = None, scalartype = float):
+        @singledispatch
+        def matr_init(arg):
+            return NotImplemented
+        @matr_init.register(numbers.Number)
+        def _(arg):
+            try:
+                return gen_id_mat(arg, scalartype = scalartype)
+            except TypeError:
+                raise TypeError("argument must be of positive integer type")
+        @matr_init.register(Sequence)
+        def _(arg):
+            try:
+                is_rectangular(arg)
+            except TypeError:
+                raise TypeError("argument must be two-dimensional iterable")
+            return [list(i) for i in arg]
+
+        if y == None:
+                self.matrix = matr_init(x)
+                if self.matrix == NotImplemented:
+                    raise TypeError("wrong arguments of type {!r} and {!r}".format(type(x), type(y)))
+        else:
+            try:
+                self.matrix = gen_id_mat(x, y, scalartype = scalartype)
+            except TypeError:
+                raise TypeError("arguments must be of positive integer type")
